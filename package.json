@@ -1,0 +1,36 @@
+{
+  "name": "cf-maintenance-mode",
+  "version": "1.0.0",
+  "description": "Beautiful maintenance page for Cloudflare Workers with hidden admin bypass and multi-site support",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "logs": "wrangler tail",
+    "maintenance:on": "wrangler kv:key put --binding=MAINTENANCE_KV enabled true",
+    "maintenance:off": "wrangler kv:key put --binding=MAINTENANCE_KV enabled false",
+    "set-password": "wrangler secret put ADMIN_PASSWORD"
+  },
+  "keywords": [
+    "cloudflare",
+    "cloudflare-workers",
+    "maintenance",
+    "maintenance-page",
+    "maintenance-mode",
+    "serverless",
+    "edge"
+  ],
+  "author": "bgross0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bgross0/cf-maintenance-mode"
+  },
+  "bugs": {
+    "url": "https://github.com/bgross0/cf-maintenance-mode/issues"
+  },
+  "homepage": "https://github.com/bgross0/cf-maintenance-mode#readme",
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

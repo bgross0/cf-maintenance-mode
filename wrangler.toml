@@ -1,0 +1,58 @@
+# CF Maintenance Mode - Cloudflare Worker Configuration
+# https://github.com/bgross0/cf-maintenance-mode
+
+name = "maintenance-mode"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# ============================================
+# STEP 1: Add your Cloudflare Account ID
+# Find it in dashboard sidebar under "Account ID"
+# ============================================
+# account_id = "YOUR_ACCOUNT_ID_HERE"
+
+# ============================================
+# STEP 2: (Optional) Set up KV for multi-site config
+# Run: npx wrangler kv:namespace create "MAINTENANCE_KV"
+# Then paste the ID below
+# ============================================
+# [[kv_namespaces]]
+# binding = "MAINTENANCE_KV"
+# id = "YOUR_KV_NAMESPACE_ID"
+
+# ============================================
+# STEP 3: Add your domain routes
+# ============================================
+# [[routes]]
+# pattern = "yourdomain.com/*"
+# zone_name = "yourdomain.com"
+
+# [[routes]]
+# pattern = "app.yourdomain.com/*"
+# zone_name = "yourdomain.com"
+
+# ============================================
+# Default Settings
+# Override per-site via KV storage
+# ============================================
+[vars]
+MAINTENANCE_MODE = "false"
+MAINTENANCE_MESSAGE = "We're currently performing scheduled maintenance."
+# Options: "none" (spinner) or ISO timestamp like "2025-01-20T14:00:00Z" (countdown)
+MAINTENANCE_END_TIME = "none"
+
+# ============================================
+# Development
+# ============================================
+[dev]
+port = 8787
+local_protocol = "http"
+
+# ============================================
+# Custom Logo (Optional)
+# Uncomment to bundle a logo.png file
+# ============================================
+# [[rules]]
+# type = "Data"
+# globs = ["**/*.png"]
+# fallthrough = true
