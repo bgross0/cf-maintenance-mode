@@ -94,8 +94,21 @@ async function handleRequest(request) {
     return maintenancePage(siteConfig)
   }
 
-  // Not in maintenance mode - pass through
-  return fetch(request)
+  // Not in maintenance mode - check for toast notification
+  const response = await fetch(request)
+
+  // Only inject toast into HTML responses
+  const contentType = response.headers.get('content-type') || ''
+  if (!contentType.includes('text/html')) {
+    return response
+  }
+
+  const notifConfig = await getNotificationConfig()
+  if (!notifConfig) {
+    return response
+  }
+
+  return injectToastNotification(response, notifConfig)
 }
 
 /**
@@ -118,6 +131,109 @@ async function isMaintenanceEnabled() {
 
   // Default to false (no maintenance)
   return false
+}
+
+/**
+ * Read toast notification config from KV
+ * Returns config object or null if disabled/missing
+ */
+async function getNotificationConfig() {
+  if (typeof MAINTENANCE_KV === 'undefined') return null
+
+  try {
+    const enabled = await MAINTENANCE_KV.get('notification:enabled')
+    if (enabled !== 'true') return null
+
+    const message = await MAINTENANCE_KV.get('notification:message')
+    if (!message) return null
+
+    const type = await MAINTENANCE_KV.get('notification:type') || 'info'
+    const duration = await MAINTENANCE_KV.get('notification:duration') || '8'
+    const id = await MAINTENANCE_KV.get('notification:id') || 'default'
+
+    return { message, type, duration: parseInt(duration, 10) || 8, id }
+  } catch (error) {
+    console.error('Error reading notification config from KV:', error)
+    return null
+  }
+}
+
+/**
+ * Escape a string for safe embedding inside a JS string literal
+ * Prevents XSS via script tag injection, quote breaking, etc.
+ */
+function escapeForJS(str) {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/</g, '\\x3c')
+    .replace(/>/g, '\\x3e')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+}
+
+/**
+ * Inject toast notification into an HTML response using HTMLRewriter
+ */
+function injectToastNotification(response, config) {
+  const colors = {
+    info:    { bg: '#e0f2fe', border: '#0284c7', text: '#0c4a6e' },
+    warning: { bg: '#fef3c7', border: '#d97706', text: '#78350f' },
+    success: { bg: '#dcfce7', border: '#16a34a', text: '#14532d' },
+  }
+  const c = colors[config.type] || colors.info
+  const safeMessage = escapeForJS(config.message)
+  const safeId = escapeForJS(config.id)
+
+  const toastSnippet = `
+<style>
+  .cf-toast-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    padding: 12px 48px 12px 20px;
+    background: ${c.bg}; border-bottom: 2px solid ${c.border}; color: ${c.text};
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px; line-height: 1.4;
+    transform: translateY(-100%); transition: transform 0.3s ease;
+  }
+  .cf-toast-banner.cf-toast-visible { transform: translateY(0); }
+  .cf-toast-dismiss {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; font-size: 18px; cursor: pointer;
+    color: ${c.text}; opacity: 0.6; padding: 4px 8px; line-height: 1;
+  }
+  .cf-toast-dismiss:hover { opacity: 1; }
+</style>
+<script>
+(function(){
+  var id = '${safeId}';
+  var key = 'toast-dismissed-' + id;
+  if (sessionStorage.getItem(key) === '1') return;
+  var d = document.createElement('div');
+  d.className = 'cf-toast-banner';
+  var s = document.createElement('span');
+  s.textContent = '${safeMessage}';
+  d.appendChild(s);
+  var b = document.createElement('button');
+  b.className = 'cf-toast-dismiss';
+  b.setAttribute('aria-label', 'Dismiss');
+  b.textContent = '\\u00d7';
+  b.onclick = function(){ d.style.display='none'; sessionStorage.setItem(key,'1'); };
+  d.appendChild(b);
+  document.body.appendChild(d);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ d.classList.add('cf-toast-visible'); }); });
+  setTimeout(function(){ d.style.display='none'; sessionStorage.setItem(key,'1'); }, ${config.duration} * 1000);
+})();
+</script>`
+
+  return new HTMLRewriter()
+    .on('body', {
+      element(element) {
+        element.append(toastSnippet, { html: true })
+      }
+    })
+    .transform(response)
 }
 
 /**
