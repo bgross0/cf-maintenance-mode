@@ -16,20 +16,16 @@ compatibility_date = "2024-01-01"
 # Run: npx wrangler kv:namespace create "MAINTENANCE_KV"
 # Then paste the ID below
 # ============================================
-# [[kv_namespaces]]
-# binding = "MAINTENANCE_KV"
-# id = "YOUR_KV_NAMESPACE_ID"
+[[kv_namespaces]]
+binding = "MAINTENANCE_KV"
+id = "c5312af44c204573ae1be7cdc26fd437"
 
 # ============================================
 # STEP 3: Add your domain routes
 # ============================================
-# [[routes]]
-# pattern = "yourdomain.com/*"
-# zone_name = "yourdomain.com"
-
-# [[routes]]
-# pattern = "app.yourdomain.com/*"
-# zone_name = "yourdomain.com"
+[[routes]]
+pattern = "psdecks.axsys.app/*"
+zone_name = "axsys.app"
 
 # ============================================
 # Default Settings
